@@ -30,10 +30,10 @@ def pathcheck(path_to_model):
             if contains_vvd and contains_vtx and contains_vtf and contains_vmt:
                 resultVar = True
                 break
-    print("VTX Detected: "+str(contains_vtx))
-    print("VTF Detected: " + str(contains_vtf))
-    print("VMT Detected: " + str(contains_vmt))
-    print("VVD Detected: " + str(contains_vvd))
+    print(f"VTX Detected: {str(contains_vtx)}")
+    print(f"VTF Detected: {str(contains_vtf)}")
+    print(f"VMT Detected: {str(contains_vmt)}")
+    print(f"VVD Detected: {str(contains_vvd)}")
     return resultVar
 
 
@@ -42,33 +42,36 @@ def next_pow_of_two(x):
     return int(math.pow(2.0, a))
 
 def convert_to_bmp_folder(path_to_vtf):
-    args = "VTFCmd.exe -folder " + str(path_to_vtf)+"\\ " + '-exportformat "bmp" -format "A8"'
+    args = (
+        f"VTFCmd.exe -folder {str(path_to_vtf)}"
+        + "\\ "
+        + '-exportformat "bmp" -format "A8"'
+    )
     subprocess.call(args)
 
 def decompile_model(path_to_model):
-    args = "cr.exe "+path_to_model
+    args = f"cr.exe {path_to_model}"
     print(path_to_model)
     subprocess.call(args)
 
 def resize_textures(path_to_folder):
-    if os.path.exists(path_to_folder):
-        files = os.listdir(path_to_folder)
-        for i in files:
-            if i.endswith(".bmp"):
-                picture = Image.open(path_to_folder+'\\'+i)
-                width, height = picture.size
-                if width>TEXTURE_SIZE_CONST:
-                    width = int((width/next_pow_of_two(width))*TEXTURE_SIZE_CONST)
-                if height>TEXTURE_SIZE_CONST:
-                    height = int((height / next_pow_of_two(height)) * TEXTURE_SIZE_CONST)
+    if not os.path.exists(path_to_folder):
+        return
+    files = os.listdir(path_to_folder)
+    for i in files:
+        if i.endswith(".bmp"):
+            picture = Image.open(path_to_folder+'\\'+i)
+            width, height = picture.size
+            if width>TEXTURE_SIZE_CONST:
+                width = int((width/next_pow_of_two(width))*TEXTURE_SIZE_CONST)
+            if height>TEXTURE_SIZE_CONST:
+                height = int((height / next_pow_of_two(height)) * TEXTURE_SIZE_CONST)
 
-                if height>TEXTURE_SIZE_CONST:
-                    height = TEXTURE_SIZE_CONST
-                if width>TEXTURE_SIZE_CONST:
-                    width = TEXTURE_SIZE_CONST
-                picture = picture.resize((width, height))
-                picture = picture.quantize(colors=256, method=2)
-                picture.save(path_to_folder+'\\'+i)
+            height = min(height, TEXTURE_SIZE_CONST)
+            width = min(width, TEXTURE_SIZE_CONST)
+            picture = picture.resize((width, height))
+            picture = picture.quantize(colors=256, method=2)
+            picture.save(path_to_folder+'\\'+i)
 
 
 def read_smd_header(path_to_smd):
@@ -77,11 +80,11 @@ def read_smd_header(path_to_smd):
         with open(path_to_smd) as f:
             filedata = f.readlines()
             for i in filedata:
-                if i[:len(i)-1] not in materialist:
-                    header.append(i[:len(i)-1])
+                if i[:-1] not in materialist:
+                    header.append(i[:-1])
                 else:
                     break
-    return fix_header(header[0:len(header)-1])
+    return fix_header(header[:-1])
 
 def fix_header(header):
     for i in range(0, len(header)):
@@ -94,8 +97,7 @@ def get_smd_data(path_to_smd):
     if path_to_smd.endswith(".smd"):
         with open(path_to_smd) as f:
             filedata = f.readlines()
-            for i in filedata:
-                truedata.append(i[:len(i)-1])
+            truedata.extend(i[:-1] for i in filedata)
     return truedata
 
 def count_of_polygons(path_to_smd):
@@ -104,17 +106,22 @@ def count_of_polygons(path_to_smd):
         with open(path_to_smd) as f:
             filedata = f.readlines()
             for i in filedata:
-                if i[:len(i)-1].lower() in materialist.keys() or i[:len(i)-1].upper() in materialist.keys() or i[:len(i)-1] in materialist.keys() :
+                if (
+                    i[:-1].lower() in materialist.keys()
+                    or i[:-1].upper() in materialist.keys()
+                    or i[:-1] in materialist.keys()
+                ):
                     cntr += 1
     else:
         print("SMD reference reading error! File not found!")
     return cntr
 
 def isnot_texturekey(value, list):
-    if value not in list.keys() and value.lower() not in list.keys() and value.upper() not in list.keys():
-        return True
-    else:
-        return False
+    return (
+        value not in list.keys()
+        and value.lower() not in list.keys()
+        and value.upper() not in list.keys()
+    )
 
 def read_smd_header(path_to_smd):
     header = []
@@ -125,11 +132,11 @@ def read_smd_header(path_to_smd):
                 print("Error! Materials not found! ")
                 return
             for i in filedata:
-                if isnot_texturekey(i[:len(i)-1], materialist):
-                    header.append(i[:len(i)-1])
+                if isnot_texturekey(i[:-1], materialist):
+                    header.append(i[:-1])
                 else:
                     break
-    return fix_header(header[0:len(header)-1])
+    return fix_header(header[:-1])
 
 def split_smd_by_batches(smd_data):
     print('='*100)
@@ -138,11 +145,11 @@ def split_smd_by_batches(smd_data):
     for i in range(0, len(smd_data)):
         if i%4==0 and i!=0:
             if one_verticle_data[0] in materialist.keys():
-                one_verticle_data[0] = materialist[one_verticle_data[0]]+".bmp"
+                one_verticle_data[0] = f"{materialist[one_verticle_data[0]]}.bmp"
             elif one_verticle_data[0].lower() in materialist.keys():
-                one_verticle_data[0] = materialist[one_verticle_data[0].lower()] + ".bmp"
-            elif  one_verticle_data[0].upper() in materialist.keys():
-                one_verticle_data[0] = materialist[one_verticle_data[0].upper()] + ".bmp"
+                one_verticle_data[0] = f"{materialist[one_verticle_data[0].lower()]}.bmp"
+            elif one_verticle_data[0].upper() in materialist.keys():
+                one_verticle_data[0] = f"{materialist[one_verticle_data[0].upper()]}.bmp"
             else:
                 print("Something is realy wrong in materiallist! Are you sure you have all required files?")
                 print("Problem material is: ", one_verticle_data[0])
@@ -168,11 +175,14 @@ def polygons_per_part(polygons_amount):
 def find_smd_reference(path_to_model):
     ttf = os.listdir(os.path.dirname(path_to_model) + '\\')
     smd_reference = []
-    qc_file = ''
-    for i in ttf:
-        if i.endswith('.qc'):
-            qc_file = os.path.dirname(path_to_model)+'\\'+i
-            break
+    qc_file = next(
+        (
+            os.path.dirname(path_to_model) + '\\' + i
+            for i in ttf
+            if i.endswith('.qc')
+        ),
+        '',
+    )
     f = open(qc_file, "r")
     qc_lines = f.readlines()
     for i in qc_lines:
@@ -205,7 +215,7 @@ def get_materials(path_to_model):
                             basetexture_line = btx[p]
                             break
                     for k in range(len(basetexture_line)-1, 0, -1):
-                        if basetexture_line[k]!='/' and basetexture_line[k]!='\\':
+                        if basetexture_line[k] not in ['/', '\\']:
                             texture_name = basetexture_line[k]+texture_name
                         else:
                             break
@@ -216,17 +226,21 @@ def get_materials(path_to_model):
 
 def find_qc(path_to_model):
     ttf = os.listdir(os.path.dirname(path_to_model) + '\\')
-    for i in ttf:
-        if '.qc' in i:
-            return os.path.dirname(path_to_model) + '\\'+i
-    return None
+    return next(
+        (os.path.dirname(path_to_model) + '\\' + i for i in ttf if '.qc' in i),
+        None,
+    )
 
 def find_animsfolder(path_to_model):
     ttf = os.listdir(os.path.dirname(path_to_model) + '\\')
-    for i in ttf:
-        if '_anims' in i:
-            return os.path.dirname(path_to_model) + '\\'+i+'\\'
-    return None
+    return next(
+        (
+            os.path.dirname(path_to_model) + '\\' + i + '\\'
+            for i in ttf
+            if '_anims' in i
+        ),
+        None,
+    )
 
 
 
@@ -242,16 +256,13 @@ def convert_model(path_to_model):
         decompile_model(path_to_model)
         resize_textures(os.path.dirname(path_to_model))
         model_name = os.path.basename(path_to_model).replace(' ', '')
-        model_box_data = []
-
         #grabbing box data
         qc_file_source = find_qc(path_to_model)
         if os.path.exists(qc_file_source):
             qc_file_source_data = open(qc_file_source).readlines()
-        for i in qc_file_source_data :
-            if "box" in i and not 'hboxset' in i:
-                model_box_data.append(i)
-
+        model_box_data = [
+            i for i in qc_file_source_data if "box" in i and 'hboxset' not in i
+        ]
         #finding anims folder and moving animations to folder with model files
         anims_folder = find_animsfolder(path_to_model)
         animlist = []
@@ -277,8 +288,8 @@ def convert_model(path_to_model):
         submodels_counter = 0
         start_triangle_section = 'triangles'
 
+        triangle_section_written = False
         for smd_file in smd_references:
-            triangle_section_written = False
             if os.path.exists(smd_file):
                 local_partnames = []
                 header = read_smd_header(smd_file)
@@ -287,64 +298,69 @@ def convert_model(path_to_model):
                 else:
                     print("WARNING! SMD data parsing error! It can cause some problems!")
                     print("Excepted: ", smd_file)
-                    pass
                 parts_amount = math.ceil(len(verticle_data) / MAX_TRIANGLES_CONST)
                 if parts_amount==0:
                     parts_amount = 1
                 ppt = polygons_per_part(len(verticle_data))
                 for part in range(0, parts_amount):
-                    print("Writing part: " + str(part + 1))
-                    partfile = smd_file[:len(smd_file) - 4] + "_decompiled_part_nr_" + str(part + 1) + "_submodel_" + str(
-                        submodels_counter) + ".smd"
+                    print(f"Writing part: {str(part + 1)}")
+                    partfile = f"{smd_file[:len(smd_file) - 4]}_decompiled_part_nr_{str(part + 1)}_submodel_{submodels_counter}.smd"
                     local_partnames.append(partfile[:len(partfile) - 4])
-                    f = open(partfile, "w")
-                    if 'triangles' not in header:
-                        header.append('triangles')
-                    for header_line in header:
-                        f.write(header_line)
-                        f.write('\n')
-
-                    for verticle in range(0, ppt[part]):
-                        writing_data = verticle_data[verticle]
-                        for s in range(0, len(writing_data)):
-                            writing_data[s] = writing_data[s].replace('  ', '')
-                            if s > 0:
-                                fixed_data = writing_data[s].split(" ")
-                                fixed_data = fixed_data[:9]
-                                writing_data[s] = ' '.join(fixed_data)
-                        for k in writing_data:
-                            f.write(k)
+                    with open(partfile, "w") as f:
+                        if 'triangles' not in header:
+                            header.append('triangles')
+                        for header_line in header:
+                            f.write(header_line)
                             f.write('\n')
 
-                    f.write('end\n')
-                    f.close()
+                        for verticle in range(0, ppt[part]):
+                            writing_data = verticle_data[verticle]
+                            for s in range(0, len(writing_data)):
+                                writing_data[s] = writing_data[s].replace('  ', '')
+                                if s > 0:
+                                    fixed_data = writing_data[s].split(" ")
+                                    fixed_data = fixed_data[:9]
+                                    writing_data[s] = ' '.join(fixed_data)
+                            for k in writing_data:
+                                f.write(k)
+                                f.write('\n')
+
+                        f.write('end\n')
                     verticle_data = verticle_data[ppt[part]:]
-                    print("Part ", str(part + 1), " of sumbodel ", str(submodels_counter), " was successful written")
+                    print(
+                        "Part ",
+                        part + 1,
+                        " of sumbodel ",
+                        submodels_counter,
+                        " was successful written",
+                    )
                     submodels_partnames.append(local_partnames)
 
-        qc_file = path_to_model[:len(path_to_model) - 4] + "_goldsource.qc"
-        f = open(qc_file, "w")
-        f.write('$modelname "' + model_name[:len(model_name) - 4] + "_goldsource.mdl" + '"' + '\n')
-        f.write('$cd ".\"' + '\n')
-        f.write('$cdtexture ".\"' + '\n')
-        f.write('$scale 1.0' + '\n')
-        for i in model_box_data:
-            f.write(i + '\n')
-        bodypart_id = 0
-        anti_duble = []
-        for i in submodels_partnames:
-            for j in i:
-                if os.path.basename(j) not in anti_duble:
-                    f.write('$body "studio' + str(bodypart_id) + '" "' + os.path.basename(j) + '"' + '\n')
-                    anti_duble.append(os.path.basename(j))
-                    bodypart_id += 1
-        for i in animlist:
-            f.write('$sequence ' + i[:len(i) - 4] + ' "' + i[:len(i) - 4] + '"' + '\n')
-        f.write('\n')
-        f.close()
+        qc_file = f"{path_to_model[:len(path_to_model) - 4]}_goldsource.qc"
+        with open(qc_file, "w") as f:
+            f.write(
+                f'$modelname "{model_name[:len(model_name) - 4]}_goldsource.mdl"'
+                + '\n'
+            )
+            f.write('$cd ".\"' + '\n')
+            f.write('$cdtexture ".\"' + '\n')
+            f.write('$scale 1.0' + '\n')
+            for i in model_box_data:
+                f.write(i + '\n')
+            bodypart_id = 0
+            anti_duble = []
+            for i in submodels_partnames:
+                for j in i:
+                    if os.path.basename(j) not in anti_duble:
+                        f.write(f'$body "studio{str(bodypart_id)}" "{os.path.basename(j)}"' + '\n')
+                        anti_duble.append(os.path.basename(j))
+                        bodypart_id += 1
+            for i in animlist:
+                f.write(f'$sequence {i[:len(i) - 4]} "{i[:len(i) - 4]}"' + '\n')
+            f.write('\n')
         if os.path.exists(qc_file):
             shutil.copy(source_direction + '\\' + 'studiomdl.exe', os.getcwd())
-            arguments = "studiomdl.exe " + qc_file
+            arguments = f"studiomdl.exe {qc_file}"
             subprocess.call(arguments)
     else:
         print("We didn't find all required resources. Are you sure you have .vtf(s), .vmt(s), .vtx, .vvd, .mdl ")
